@@ -14,7 +14,7 @@ from plasmapy.utils.decorators import validate_quantities
 @validate_quantities(
     T_e={"can_be_negative": False, "equivalencies": u.temperature_energy()}
 )
-def ionization_balance(n: u.m**-3, T_e: u.K) -> u.dimensionless_unscaled:
+def ionization_balance(n: u.m**-3, T_e: u.K, Z_n) -> u.dimensionless_unscaled:
     r"""
     Return the average ionization state of ions in a plasma assuming that
     the numbers of ions in each state are equal.
@@ -28,11 +28,14 @@ def ionization_balance(n: u.m**-3, T_e: u.K) -> u.dimensionless_unscaled:
     meaning that the number of atoms in either state are equal.
     The Saha equation and therefore Z_bal are more accurate when the plasma
     is at a high density and temperature.
+    Z_n is the nuclear charge of the specie considered.
 
     .. math::
 
         Z\_bal = \sqrt{\frac{k_B T_e}{E_H}} \sqrt{\ln{\frac{1}{4 n a_{0}^3}
         (\frac{k_B T_e}{π E_H})^{3/2}}} - \frac{1}{2}
+
+        Z\_bal \leq Z\_n
 
     Where :math:`k_B` is the Boltzmann constant,
     :math:`a_0` is the Bohr radius, and
@@ -47,6 +50,8 @@ def ionization_balance(n: u.m**-3, T_e: u.K) -> u.dimensionless_unscaled:
 
     n : `~astropy.units.Quantity`
         The electron number density of the plasma.
+
+    Z_n : The nuclear charge of the specie considered
 
     Warns
     -----
@@ -73,6 +78,12 @@ def ionization_balance(n: u.m**-3, T_e: u.K) -> u.dimensionless_unscaled:
     >>> n = 1e10 * u.m ** -3
     >>> ionization_balance(n, T_e)
     <Quantity 12.615...>
+    >>> #Typical ITER Plasma
+    >>> n = 1e19 * u.m ** -3
+    >>> T = 8e3 * u.eV 
+    >>> Zn = 1
+    <Quantity 1>
+    
 
     Returns
     -------
@@ -86,7 +97,12 @@ def ionization_balance(n: u.m**-3, T_e: u.K) -> u.dimensionless_unscaled:
     A = sqrt(k_B * T_e / E_H)
     B = log(1 / (4 * n * a0**3) * (k_B * T_e / (pi * E_H)) ** (3 / 2))
 
-    return A * sqrt(B) - 1 / 2
+    if A < Z_n:
+        Z_bal = A * np.sqrt(B) - 1 / 2
+    if A >= Z_n:
+        Z_bal = Z_n
+    
+    return Z_bal
 
 
 Z_bal_ = ionization_balance
